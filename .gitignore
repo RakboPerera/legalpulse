@@ -1,0 +1,13 @@
+node_modules
+.env
+.env.local
+.env.*.local
+*.db
+backend/storage
+frontend/dist
+.DS_Store
+.claude
+.vscode
+.idea
+*.log
+Thumbs.db
