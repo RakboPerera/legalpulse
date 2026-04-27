@@ -427,21 +427,22 @@ function generateMarketSignals(clients) {
   let sIdx = 1;
   const competitors = ['Clifford Chance', 'Linklaters', 'Allen & Overy', 'Herbert Smith', 'Ashurst', 'DLA Piper'];
 
-  // Pattern: Nexus Technologies — competitor threat signals
+  // Pattern: Nexus Technologies — active competitor threat signals (within 12-month window)
   signals.push({
     id: `MS${String(sIdx++).padStart(3, '0')}`, client_id: 'CLI002',
-    signal_date: '2024-07-15', signal_type: 'Directory Ranking',
-    source: 'Chambers UK 2024', content: 'Ashurst ranked Band 1 for Technology sector — direct overlap with our Nexus Technologies work',
+    signal_date: '2025-11-18', signal_type: 'Directory Ranking',
+    source: 'Chambers UK 2025', content: 'Ashurst ranked Band 1 for Technology sector — direct overlap with our Nexus Technologies work',
     competitor: 'Ashurst', severity: 'High',
   });
   signals.push({
     id: `MS${String(sIdx++).padStart(3, '0')}`, client_id: 'CLI002',
-    signal_date: '2024-08-02', signal_type: 'Lateral Hire',
+    signal_date: '2026-02-12', signal_type: 'Lateral Hire',
     source: 'Legal Week', content: 'DLA Piper hires partner who previously led technology practice at firm handling Nexus Technologies regulatory work',
     competitor: 'DLA Piper', severity: 'High',
   });
 
-  // General market signals
+  // General market signals — spread across last ~18 months so a realistic mix
+  // falls inside and outside the 12-month scoring window
   const signalTemplates = [
     { type: 'Directory Ranking', content: '{comp} ranked for {industry} sector in Legal 500', severity: 'Medium' },
     { type: 'Panel Appointment', content: '{comp} appointed to {client} legal panel for {pa}', severity: 'High' },
@@ -455,12 +456,15 @@ function generateMarketSignals(clients) {
     const tmpl = pick(signalTemplates);
     const client = pick(clients.slice(0, 20));
     const comp = pick(competitors);
+    // Weight toward recent: 20% historical 2024, 50% 2025, 30% early 2026
+    const signalYear = pick([2024, 2025, 2025, 2025, 2026, 2026]);
+    const signalDate = randomDate(1, signalYear === 2026 ? 4 : 12, signalYear);
     signals.push({
       id: `MS${String(sIdx++).padStart(3, '0')}`,
       client_id: client.id,
-      signal_date: randomDate(1, 9, 2024),
+      signal_date: signalDate,
       signal_type: tmpl.type,
-      source: pick(['Chambers 2024', 'Legal 500', 'Legal Week', 'The Lawyer', 'Law.com', 'Company announcement']),
+      source: pick(['Chambers 2025', 'Legal 500', 'Legal Week', 'The Lawyer', 'Law.com', 'Company announcement']),
       content: tmpl.content.replace('{comp}', comp).replace('{client}', client.name).replace('{industry}', client.industry).replace('{pa}', pick(PRACTICE_AREAS)),
       competitor: comp, severity: tmpl.severity,
     });

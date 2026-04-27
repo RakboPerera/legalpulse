@@ -204,34 +204,126 @@ export function createAnalyticsRouter(db) {
   // ─── Client Health Scores ───
   router.get('/client-health', (req, res) => {
     try {
+      // Base client data — join only the latest period wallet estimate per client
+      // to avoid duplicate rows if multiple period rows exist
       const clients = db.prepare(`
-        SELECT c.*, cwe.our_revenue, cwe.estimated_total_legal_spend, cwe.share_of_wallet_pct
+        SELECT c.*, cwe.our_revenue, cwe.estimated_total_legal_spend, cwe.share_of_wallet_pct,
+          cwe.confidence as wallet_confidence
         FROM clients c
-        LEFT JOIN client_wallet_estimates cwe ON cwe.client_id = c.client_id
+        LEFT JOIN client_wallet_estimates cwe
+          ON cwe.client_id = c.client_id
+          AND cwe.period = (
+            SELECT MAX(period) FROM client_wallet_estimates WHERE client_id = c.client_id
+          )
         WHERE c.status = 'Active'
         ORDER BY cwe.our_revenue DESC NULLS LAST
         LIMIT 30
       `).all();
 
+      // Pre-fetch Factor 2: matter diversity — open matters only
+      const diversityMap = Object.fromEntries(
+        db.prepare(`
+          SELECT client_id, COUNT(DISTINCT practice_area) as cnt
+          FROM matters WHERE status = 'Open'
+          GROUP BY client_id
+        `).all().map(r => [r.client_id, r.cnt])
+      );
+
+      // Pre-fetch Factor 3: partner breadth — open or closed within last 24 months
+      const partnerMap = Object.fromEntries(
+        db.prepare(`
+          SELECT client_id, COUNT(DISTINCT responsible_partner) as cnt
+          FROM matters
+          WHERE status = 'Open' OR close_date > date('now', '-24 months')
+          GROUP BY client_id
+        `).all().map(r => [r.client_id, r.cnt])
+      );
+
+      // Pre-fetch Factor 5: competitor practice foothold per client
+      const footholdMap = Object.fromEntries(
+        db.prepare(`
+          SELECT client_id,
+            SUM(CASE WHEN served_by_us = 0 THEN 1 ELSE 0 END) as competitor_areas,
+            SUM(CASE WHEN served_by_us = 0 THEN COALESCE(estimated_client_spend, 0) ELSE 0 END) as competitor_spend
+          FROM practice_coverage
+          GROUP BY client_id
+        `).all().map(r => [r.client_id, r])
+      );
+
+      // Pre-fetch Factor 6: worst market signal severity per client in last 12 months
+      // Encode severity as integer for MAX aggregation: High=3, Medium=2, Low=1
+      const signalMap = Object.fromEntries(
+        db.prepare(`
+          SELECT client_id,
+            MAX(CASE severity WHEN 'High' THEN 3 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 1 ELSE 0 END) as worst
+          FROM market_signals
+          WHERE client_id IS NOT NULL AND signal_date > date('now', '-12 months')
+          GROUP BY client_id
+        `).all().map(r => [r.client_id, r.worst])
+      );
+
       const scored = clients.map(c => {
         let score = 50;
-        // Revenue trend (simplified — based on our_revenue level)
-        if (c.our_revenue > 500000) score += 20;
-        else if (c.our_revenue > 200000) score += 10;
-        else if (c.our_revenue > 50000) score -= 0;
+
+        // Factor 1: Revenue level — neutral if no wallet data (no penalty for missing data)
+        const rev = c.our_revenue;
+        if (rev == null) { /* neutral */ }
+        else if (rev > 500000) score += 20;
+        else if (rev > 200000) score += 10;
+        else if (rev <= 50000) score -= 10;
+
+        // Factor 2: Matter diversity (open matters only)
+        const practiceCount = diversityMap[c.client_id] || 0;
+        if (practiceCount >= 3) score += 20;
+        else if (practiceCount === 2) score += 10;
         else score -= 10;
 
-        // Matter diversity
-        const practices = db.prepare(`SELECT COUNT(DISTINCT practice_area) as c FROM matters WHERE client_id = ? AND status = 'Open'`).get(c.client_id);
-        if (practices && practices.c >= 3) score += 20;
-        else if (practices && practices.c === 2) score += 10;
-        else score -= 10;
-
-        // Relationship breadth
-        const partners = db.prepare(`SELECT COUNT(DISTINCT responsible_partner) as c FROM matters WHERE client_id = ?`).get(c.client_id);
-        if (partners && partners.c >= 3) score += 15;
-        else if (partners && partners.c === 2) score += 10;
+        // Factor 3: Partner breadth (open or closed within 24 months)
+        const partnerCount = partnerMap[c.client_id] || 0;
+        if (partnerCount >= 3) score += 15;
+        else if (partnerCount === 2) score += 10;
         else score -= 5;
+
+        // Factors 4–6: Competitor signals — combined cap of −25 (positives uncapped)
+        let competitorDelta = 0;
+
+        // Factor 4: Share of wallet position
+        const sow = c.share_of_wallet_pct;
+        if (sow != null) {
+          let sowAdj;
+          if (sow >= 50) sowAdj = 10;
+          else if (sow >= 25) sowAdj = 0;
+          else if (sow >= 10) sowAdj = -10;
+          else sowAdj = -20;
+          // Low-confidence estimates carry half the weight
+          if (c.wallet_confidence === 'Low') sowAdj = Math.round(sowAdj / 2);
+          competitorDelta += sowAdj;
+        }
+
+        // Factor 5: Competitor practice foothold (spend ratio vs our revenue)
+        const fh = footholdMap[c.client_id];
+        if (fh) {
+          if (fh.competitor_areas === 0) {
+            competitorDelta += 5; // full coverage bonus
+          } else if (rev && rev > 0) {
+            const ratio = fh.competitor_spend / rev;
+            if (ratio > 1.5) competitorDelta -= 20;
+            else if (ratio >= 0.5) competitorDelta -= 12;
+            else competitorDelta -= 5;
+          } else {
+            competitorDelta -= 5; // competitors present but no revenue baseline
+          }
+        }
+
+        // Factor 6: Recent competitive signals (last 12 months)
+        const worstSignal = signalMap[c.client_id] || 0;
+        if (worstSignal === 3) competitorDelta -= 15;
+        else if (worstSignal === 2) competitorDelta -= 8;
+        else if (worstSignal === 1) competitorDelta -= 3;
+
+        // Cap combined competitor penalty at −25; positives apply in full
+        if (competitorDelta < -25) competitorDelta = -25;
+        score += competitorDelta;
 
         score = Math.max(0, Math.min(100, score));
 

@@ -258,10 +258,11 @@ export default function Dashboard() {
             <InfoTooltip
               title="Client Health Distribution"
               sections={[
-                { label: 'What it shows', body: 'Every active client bucketed into Healthy, Watch, or At Risk based on a composite 0-100 score. Percentages and counts shown alongside.' },
-                { label: 'Scoring model', body: 'Start at 50, then adjust for: (1) our revenue level · (2) matter diversity across practice areas · (3) relationship breadth across partners · (4) engagement recency · (5) payment behaviour. Clamped to [0, 100].', mono: false },
-                { label: 'Bands', body: 'Healthy ≥ 70 · Watch 50-69 · At Risk < 50' },
-                { label: 'Why it matters', body: 'Revenue decline is a lagging indicator — by the time a client\'s revenue has fallen, the relationship problem is months old. Matter diversity and partner breadth thinning are the leading signals. This score is designed to flag those movements before they hit the P&L.' },
+                { label: 'What it shows', body: 'Every active client bucketed into Healthy, Watch, or At Risk based on a composite 0–100 score. Counts shown alongside.' },
+                { label: 'Scoring model', body: 'Baseline 50. Six factors adjust the score:\n① Revenue level (±10–20)\n② Matter diversity — open matters only (±10–20)\n③ Partner breadth — active last 24 months (±5–15)\n④ Share of wallet position (±0–20, confidence-weighted)\n⑤ Competitor practice foothold — spend ratio vs our revenue (±5 to −20)\n⑥ Recent competitive signals last 12 months (0 to −15)\n\nFactors ④–⑥ capped at a combined −25. Final score clamped to [0, 100].' },
+                { label: 'Bands', body: 'Healthy ≥ 70 · Watch 50–69 · At Risk < 50' },
+                { label: 'Why competitor signals are included', body: 'A client with <10% share of wallet or named competitors holding more practice areas than us is already drifting — even if revenue looks stable today. The score incorporates these leading signals before they manifest as lost revenue.' },
+                { label: 'Why it matters', body: 'Revenue decline is a lagging indicator — by the time it shows, the relationship problem is 6–12 months old. This score is designed to surface those movements in advance.' },
               ]}
               nextStep={{ label: 'See individual client scores and drivers', to: '/clients' }}
             />
