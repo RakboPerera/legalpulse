@@ -159,6 +159,25 @@ export default function Dashboard() {
           <div className="metric-value">{overview?.openMatters}</div>
           <div className="metric-sub">{overview?.activeTimekeepers} active timekeepers</div>
         </div>
+        <div className="metric-card cyan">
+          <div className="metric-label">
+            Worked Value
+            <InfoTooltip
+              title="Worked Value"
+              sections={[
+                { label: 'What it shows', body: 'The total £ value of all time recorded by fee-earners — every hour worked multiplied by the rate applied. This is the top of the revenue funnel, before any billing decisions or write-offs are made.' },
+                { label: 'Formula', body: 'SUM(hours_billed × rate_applied) across all time_entries', mono: true },
+                { label: 'How to read it', body: 'Compare with Total Revenue Collected to see the full leakage across the funnel. The gap between Worked Value and Collected is the combined effect of write-downs, write-offs, and uncollected receivables.' },
+                { label: 'Why it matters', body: 'Overall Realisation = Collected ÷ Worked Value. A rising Worked Value with flat Collected means the firm is doing more work but not capturing the value — a billing or collection discipline problem, not a volume problem.' },
+              ]}
+              nextStep={{ label: 'See the full Worked → Collected waterfall', to: '/financial' }}
+            />
+          </div>
+          <div className="metric-value">{fmt(overview?.totalWorkedValue)}</div>
+          <div className="metric-sub">
+            <span style={{color:'var(--accent-cyan)'}}>Top of revenue funnel</span>
+          </div>
+        </div>
       </div>
 
       {/* Charts Row 1 */}

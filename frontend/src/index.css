@@ -175,6 +175,7 @@ input, select, textarea { font-family: var(--font-body); }
 .metric-card.amber::before { background: var(--accent-amber); }
 .metric-card.red::before { background: var(--accent-red); }
 .metric-card.purple::before { background: var(--accent-purple); }
+.metric-card.cyan::before { background: var(--accent-cyan); }
 .metric-label {
   font-size: 0.78rem; color: var(--text-muted);
   font-weight: 500; text-transform: uppercase;

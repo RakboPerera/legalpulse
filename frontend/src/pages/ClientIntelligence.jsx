@@ -14,6 +14,7 @@ export default function ClientIntelligence() {
   const [clientHealth, setClientHealth] = useState([]);
   const [signals, setSignals] = useState([]);
   const [tab, setTab] = useState('wallet');
+  const [crossSellFilter, setCrossSellFilter] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,7 +67,9 @@ export default function ClientIntelligence() {
 
       <div className="tabs">
         <button className={`tab ${tab === 'wallet' ? 'active' : ''}`} onClick={() => setTab('wallet')}>Share of Wallet</button>
-        <button className={`tab ${tab === 'crosssell' ? 'active' : ''}`} onClick={() => setTab('crosssell')}>Cross-Sell Gaps</button>
+        <button className={`tab ${tab === 'crosssell' ? 'active' : ''}`} onClick={() => { setTab('crosssell'); }}>
+          Cross-Sell Gaps{crossSellFilter ? ` · ${crossSellFilter}` : ''}
+        </button>
         <button className={`tab ${tab === 'health' ? 'active' : ''}`} onClick={() => setTab('health')}>Client Health</button>
         <button className={`tab ${tab === 'signals' ? 'active' : ''}`} onClick={() => setTab('signals')}>Market Signals</button>
       </div>
@@ -134,6 +137,7 @@ export default function ClientIntelligence() {
                     <th>Share of Wallet</th>
                     <th>Wallet Gap</th>
                     <th>Confidence</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -150,6 +154,18 @@ export default function ClientIntelligence() {
                       </td>
                       <td className="num" style={{color:'var(--accent-green)',fontWeight:600}}>{fmt(w.wallet_gap)}</td>
                       <td><span className={`badge ${w.confidence === 'High' ? 'badge-green' : w.confidence === 'Medium' ? 'badge-amber' : 'badge-red'}`}>{w.confidence}</span></td>
+                      <td>
+                        <button
+                          onClick={() => { setCrossSellFilter(w.client_name); setTab('crosssell'); }}
+                          style={{
+                            background: 'var(--accent-purple)', color: '#fff', border: 'none',
+                            borderRadius: 5, padding: '4px 10px', fontSize: '0.75rem',
+                            cursor: 'pointer', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Find Opportunities →
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -175,6 +191,27 @@ export default function ClientIntelligence() {
                 ]}
               />
             </div>
+            {crossSellFilter && (
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+                <span style={{fontSize:'0.8rem',color:'var(--text-muted)'}}>Filtered to:</span>
+                <span style={{
+                  background:'var(--accent-purple)', color:'#fff', borderRadius:12,
+                  padding:'3px 12px', fontSize:'0.8rem', fontWeight:600,
+                }}>
+                  {crossSellFilter}
+                </span>
+                <button
+                  onClick={() => setCrossSellFilter(null)}
+                  style={{
+                    background:'transparent', border:'1px solid var(--border)',
+                    color:'var(--text-muted)', borderRadius:5, padding:'3px 10px',
+                    fontSize:'0.75rem', cursor:'pointer',
+                  }}
+                >
+                  × Clear filter
+                </button>
+              </div>
+            )}
             <p style={{color:'var(--text-muted)',fontSize:'0.82rem',marginBottom:16}}>
               Practice areas we don't serve but clients likely need — ranked by estimated spend.
             </p>
@@ -191,7 +228,7 @@ export default function ClientIntelligence() {
                   </tr>
                 </thead>
                 <tbody>
-                  {crossSell.map((c, i) => (
+                  {(crossSellFilter ? crossSell.filter(c => c.client_name === crossSellFilter) : crossSell).map((c, i) => (
                     <tr key={i}>
                       <td className="highlight">{c.client_name}</td>
                       <td>{c.industry}</td>
@@ -201,6 +238,13 @@ export default function ClientIntelligence() {
                       <td className="text-muted">{c.source}</td>
                     </tr>
                   ))}
+                  {crossSellFilter && crossSell.filter(c => c.client_name === crossSellFilter).length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{textAlign:'center',color:'var(--text-muted)',padding:'24px 0'}}>
+                        No cross-sell opportunities found for {crossSellFilter}. They may already be fully served across all practice areas.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

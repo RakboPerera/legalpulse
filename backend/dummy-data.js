@@ -403,7 +403,14 @@ function generatePracticeCoverage(clients, matters) {
   const competitors = ['Clifford Chance', 'Linklaters', 'Allen & Overy', 'Herbert Smith', 'Ashurst', 'DLA Piper', 'Eversheds', 'Hogan Lovells'];
 
   for (const c of clients.slice(0, 35)) { // Top 35 clients
-    const servedAreas = [...new Set(matters.filter(m => m.client_id === c.id).map(m => m.practice_area))];
+    // Cap served areas so large clients always have cross-sell opportunities.
+    // Enterprise/Large clients with 8-15 matters often cover all 5 practice areas
+    // by random chance, leaving nothing in the cross-sell table.
+    const maxServed = (c.size === 'Enterprise' || c.size === 'Large') ? 3
+                    : c.size === 'Mid-Market' ? 3
+                    : 2;
+    let servedAreas = [...new Set(matters.filter(m => m.client_id === c.id).map(m => m.practice_area))];
+    if (servedAreas.length > maxServed) servedAreas = servedAreas.slice(0, maxServed);
     for (const pa of PRACTICE_AREAS) {
       const served = servedAreas.includes(pa);
       const estSpend = served ? randomBetween(50000, 500000) : randomBetween(100000, 2000000);

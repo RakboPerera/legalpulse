@@ -364,7 +364,6 @@ export function createAnalyticsRouter(db) {
         JOIN clients c ON c.client_id = pc.client_id
         WHERE pc.served_by_us = 0 AND pc.estimated_client_spend > 100000
         ORDER BY pc.estimated_client_spend DESC
-        LIMIT 20
       `).all();
       res.json(results);
     } catch (e) { res.status(500).json({ error: e.message }); }
