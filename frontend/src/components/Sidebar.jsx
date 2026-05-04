@@ -3,7 +3,7 @@ import { NavLink, Link } from 'react-router-dom';
 import {
   LayoutDashboard, TrendingUp, Users, DollarSign,
   MessageSquare, Database, BarChart3, Target,
-  ShieldAlert, FileSpreadsheet, ArrowLeft
+  ShieldAlert, FileSpreadsheet, ArrowLeft, BookOpen
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -59,6 +59,11 @@ export default function Sidebar() {
         </NavLink>
         <NavLink to="/data" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <Database /> Data Management
+        </NavLink>
+
+        <div className="sidebar-section-label">Reference</div>
+        <NavLink to="/glossary" className={({isActive}) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <BookOpen /> Glossary
         </NavLink>
       </nav>
       <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>

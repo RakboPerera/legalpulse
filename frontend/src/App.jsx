@@ -7,6 +7,7 @@ import ClientIntelligence from './pages/ClientIntelligence';
 import FinancialDeepDive from './pages/FinancialDeepDive';
 import Chat from './pages/Chat';
 import DataManagement from './pages/DataManagement';
+import Glossary from './pages/Glossary';
 import Layout from './components/Layout';
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
       <Route path="/financial" element={<Layout><FinancialDeepDive /></Layout>} />
       <Route path="/chat" element={<Layout><Chat /></Layout>} />
       <Route path="/data" element={<Layout><DataManagement /></Layout>} />
+      <Route path="/glossary" element={<Layout><Glossary /></Layout>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
